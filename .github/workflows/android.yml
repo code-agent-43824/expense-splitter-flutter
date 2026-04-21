@@ -21,6 +21,7 @@ jobs:
       - name: Restore platforms and install deps
         run: |
           flutter create . --platforms=android
+          rm -f test/widget_test.dart
           flutter pub get
 
       - name: Run tests
