@@ -1,0 +1,41 @@
+name: Windows x64
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Restore platforms and install deps
+        run: |
+          flutter create . --platforms=windows
+          flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Pack Windows artifact
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath build/windows/x64/runner/expense-splitter-windows-x64.zip
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: expense-splitter-windows-x64
+          path: build/windows/x64/runner/expense-splitter-windows-x64.zip
