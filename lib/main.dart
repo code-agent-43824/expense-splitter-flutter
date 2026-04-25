@@ -99,6 +99,48 @@ class _SplitPageState extends State<SplitPage> {
     });
   }
 
+  void _handlePaidChanged(int index) {
+    final totalCents = ReceiptCalculator.parseMoneyToCents(
+      _totalController.text,
+    );
+    final enteredCents = ReceiptCalculator.parseMoneyToCents(
+      _participants[index].paidController.text,
+    );
+
+    if (totalCents == null || enteredCents == null || enteredCents < 0) {
+      setState(() {});
+      return;
+    }
+
+    var otherPaidCents = 0;
+    for (var i = 0; i < _participants.length; i++) {
+      if (i == index) {
+        continue;
+      }
+      final cents = ReceiptCalculator.parseMoneyToCents(
+        _participants[i].paidController.text,
+      );
+      if (cents != null && cents > 0) {
+        otherPaidCents += cents;
+      }
+    }
+
+    final maxAllowed = ReceiptCalculator.remainingAllowedPaidCents(
+      totalCents: totalCents,
+      otherPaidCents: otherPaidCents,
+    );
+
+    if (enteredCents > maxAllowed) {
+      final clampedText = ReceiptCalculator.formatCentsForInput(maxAllowed);
+      _participants[index].paidController.value = TextEditingValue(
+        text: clampedText,
+        selection: TextSelection.collapsed(offset: clampedText.length),
+      );
+    }
+
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final result = ReceiptCalculator.calculate(
@@ -181,7 +223,8 @@ class _SplitPageState extends State<SplitPage> {
                             _ParticipantCard(
                               participant: _participants[index],
                               canRemove: _participants.length > 1,
-                              onChanged: () => setState(() {}),
+                              onNameChanged: () => setState(() {}),
+                              onPaidChanged: () => _handlePaidChanged(index),
                               onRemove: () => _removeParticipant(index),
                             ),
                             if (index != _participants.length - 1)
@@ -376,13 +419,15 @@ class _ParticipantCard extends StatelessWidget {
   const _ParticipantCard({
     required this.participant,
     required this.canRemove,
-    required this.onChanged,
+    required this.onNameChanged,
+    required this.onPaidChanged,
     required this.onRemove,
   });
 
   final ParticipantInput participant;
   final bool canRemove;
-  final VoidCallback onChanged;
+  final VoidCallback onNameChanged;
+  final VoidCallback onPaidChanged;
   final VoidCallback onRemove;
 
   @override
@@ -398,7 +443,7 @@ class _ParticipantCard extends StatelessWidget {
           TextField(
             controller: participant.nameController,
             decoration: const InputDecoration(labelText: 'Имя'),
-            onChanged: (_) => onChanged(),
+            onChanged: (_) => onNameChanged(),
           ),
           const SizedBox(height: 10),
           Row(
@@ -413,7 +458,7 @@ class _ParticipantCard extends StatelessWidget {
                     labelText: 'Заплатил',
                     prefixText: '₽ ',
                   ),
-                  onChanged: (_) => onChanged(),
+                  onChanged: (_) => onPaidChanged(),
                 ),
               ),
               const SizedBox(width: 10),
@@ -670,6 +715,20 @@ class ReceiptCalculator {
       normalized.add(_ParticipantMoney(name: name, paidCents: paid));
     }
 
+    final totalPaidCents = normalized.fold<int>(
+      0,
+      (sum, participant) => sum + participant.paidCents,
+    );
+    if (totalPaidCents > totalCents) {
+      return CalculationResult(
+        totalCents: totalCents,
+        equalShareCents: 0,
+        participants: const [],
+        settlements: const [],
+        error: 'Сумма оплат не может быть больше суммы чека.',
+      );
+    }
+
     final baseShare = totalCents ~/ normalized.length;
     final remainder = totalCents % normalized.length;
 
@@ -745,6 +804,24 @@ class ReceiptCalculator {
 
     return settlements;
   }
+
+  static int remainingAllowedPaidCents({
+    required int totalCents,
+    required int otherPaidCents,
+  }) {
+    final remaining = totalCents - otherPaidCents;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  static String formatCentsForInput(int cents) {
+    final whole = cents ~/ 100;
+    final fraction = cents % 100;
+    return fraction == 0
+        ? '$whole'
+        : '$whole.${fraction.toString().padLeft(2, '0')}';
+  }
+
+  static int? parseMoneyToCents(String input) => _parseMoneyToCents(input);
 
   static int? _parseMoneyToCents(String input) {
     final sanitized = input.trim().replaceAll(' ', '').replaceAll(',', '.');

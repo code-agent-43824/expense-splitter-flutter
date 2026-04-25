@@ -60,5 +60,42 @@ void main() {
 
       expect(result.error, isNotNull);
     });
+
+    test('returns validation error when paid sum exceeds receipt total', () {
+      final participants = [
+        ParticipantInput(
+          name: 'Аня',
+          paidController: TextEditingController(text: '700'),
+        ),
+        ParticipantInput(
+          name: 'Борис',
+          paidController: TextEditingController(text: '400'),
+        ),
+      ];
+
+      final result = ReceiptCalculator.calculate(
+        totalInput: '1000',
+        participants: participants,
+      );
+
+      expect(result.error, 'Сумма оплат не может быть больше суммы чека.');
+    });
+
+    test('calculates remaining allowed amount for current participant', () {
+      expect(
+        ReceiptCalculator.remainingAllowedPaidCents(
+          totalCents: 100000,
+          otherPaidCents: 65000,
+        ),
+        35000,
+      );
+      expect(
+        ReceiptCalculator.remainingAllowedPaidCents(
+          totalCents: 100000,
+          otherPaidCents: 120000,
+        ),
+        0,
+      );
+    });
   });
 }
