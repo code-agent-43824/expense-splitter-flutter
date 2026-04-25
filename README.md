@@ -15,9 +15,9 @@
 Нужен Flutter stable.
 
 ```bash
-flutter create . --platforms=android,ios,windows
+flutter create . --platforms=android,ios,linux,windows
 flutter pub get
-flutter run
+flutter run -d linux
 ```
 
 ## Сборка
@@ -27,6 +27,13 @@ flutter run
 flutter create . --platforms=android
 flutter pub get
 flutter build apk --release
+```
+
+### Linux x64
+```bash
+flutter create . --platforms=linux
+flutter pub get
+flutter build linux --release
 ```
 
 ### Windows x64
@@ -47,6 +54,7 @@ flutter build ios --simulator
 
 В репозитории добавлены workflows:
 - `.github/workflows/android.yml` — собирает Android APK,
+- `.github/workflows/linux.yml` — собирает Linux x64 zip,
 - `.github/workflows/windows.yml` — собирает Windows x64 zip,
 - `.github/workflows/ios.yml` — собирает iOS simulator app.
 
